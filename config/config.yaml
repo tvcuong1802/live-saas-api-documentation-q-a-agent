@@ -1,0 +1,44 @@
+# Runtime parameters — loaded separately from config/agent.yaml and passed as
+# Graph(config=...). agent.yaml is the static manifest; every tunable value lives here.
+#
+# This file was absent while src/ already read all of the keys below through
+# resolve_agent_config(). Each read therefore fell to its hardcoded default and no
+# deployment could change it: grounding_threshold was pinned at 0.7 whatever an
+# operator intended. The values here reproduce those defaults exactly, so behaviour is
+# unchanged — what changes is that the knobs the code advertises now have a source.
+
+agent:
+  config:
+    # ResponseValidate — fraction of cited endpoints that must resolve to a retrieved
+    # chunk before the answer is shown. Below this the answer is replaced by a refusal.
+    grounding_threshold: 0.7
+
+    # TargetedRetrieve — vector search limits.
+    retrieval:
+      top_k: 5
+      score_threshold: 0.7
+      # Separate floor for the local/mock backend, which scores lexical coverage rather
+      # than cosine similarity — one number cannot be calibrated for both scales.
+      # Measured on the in-repo corpus: on-topic 1.000, off-topic 0.000, a query naming
+      # two different APIs 0.500. Retires with the mock backend.
+      mock_score_threshold: 0.5
+      # Chunks older than this are answered with a staleness warning attached.
+      stale_after_days: 7
+
+    # KBService backend.
+    #
+    # INTERIM — pinned to the in-repo corpus while the knowledge-base input mechanism
+    # is decided (raised with PM/CoE, 2026-08). With no vector store provisioned the
+    # real path fails closed to zero chunks, so every question returns "no matching
+    # documentation" — an agent that is up and useless. Pinning to the deterministic
+    # corpus makes the agent answer, with provenance the corpus itself carries.
+    #
+    # When the KB input mechanism lands, this becomes the one line to change: remove
+    # it and the real vector store takes over, with no code change anywhere.
+    kb_backend: mock
+
+    # APINameDetect — restrict answers to these APIs. Empty means no restriction.
+    configured_apis: []
+
+    # CodeExampleFilter — include code samples in the answer context.
+    include_code_examples: true

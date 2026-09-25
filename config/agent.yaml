@@ -1,0 +1,45 @@
+# Agent Manifest — AgentRegistry entry point
+# AgentRegistry reads every key below at ROOT level — do NOT nest them under an
+# `agent:` block. The nested shape is invisible to the registry: namespace/enabled
+# fall back to defaults and the registry key degrades to "default/unknown@latest".
+# De-nested for the root-level AgentRegistry schema gate.
+id: "CMN-C1-071"
+name: "Live SaaS API Documentation Q&A Agent"
+namespace: "cmn"
+version: "1.0.11"
+enabled: true
+category: "Cat 1"
+industry: "CMN"
+
+# Base picklist pattern reference ONLY — not the inheritance target. The template
+# inherits AgentBaseGraph (L1 direct); see docs/02_design.md.
+base_type: "VectorRAGAgent"
+
+# Entry point — ONE dotted import path (module.Class), not a split module:/class:.
+# AgentRegistry does manifest["class"].rsplit(".", 1) to resolve it. Verified to import
+# and to subclass AgentBaseGraph.
+class: "src.graph.graph.SaaSAPIDocQAAgent"
+
+# Security — highest TrustLevel declared by this template's nodes.
+required_trust_level: "VERIFIED_EXTERNAL"
+
+# Compile-time gates — declare every secret/extra actually used, or the agent loads
+# with those checks silently disabled.
+requires:
+  # Read via ctx.secrets.require() in src/services/llm_provider.py. Undeclared secrets
+  # bind to nothing, so the LLM client fails to build and the agent answers from its
+  # offline branch while still reporting status success — no error anywhere.
+  secrets:
+    - "AZURE_OPENAI_API_KEY"
+    - "AZURE_OPENAI_ENDPOINT"
+    - "AZURE_OPENAI_DEPLOYMENT"
+  # requires.extras is the REGISTRY namespace, validated against shared.utils.extras_map
+  # (anthropic, aws-sm, bedrock, openai, pinecone, redis, vault) — not the packaging
+  # extras of the wheel. "marketplace" is a packaging extra and is rejected here; it is
+  # declared in pyproject.toml instead, which is what actually installs it.
+  # openai: the langchain_openai backend behind AzureOpenAIClient.
+  extras:
+    - "openai"
+
+# Runtime parameters (max_retry, timeout_s, hitl.*, memory_enabled, ...) live in
+# config/config.yaml — AgentRegistry loads that separately as Graph(config=...).
